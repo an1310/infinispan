@@ -22,6 +22,8 @@
  */
 package org.infinispan.query.backend;
 
+import java.util.UUID;
+
 import org.infinispan.query.test.CustomKey;
 import org.infinispan.query.test.CustomKey2;
 import org.infinispan.query.test.CustomKey3;
@@ -41,9 +43,10 @@ public class KeyTransformationHandlerTest {
 
    String s = null;
    Object key = null;
-   
+
    private KeyTransformationHandler keyTransformationHandler;
-   
+   private static final UUID randomUUID = UUID.randomUUID();
+
    @BeforeMethod
    public void beforeMethod() {
       keyTransformationHandler = new KeyTransformationHandler();
@@ -76,45 +79,52 @@ public class KeyTransformationHandlerTest {
 
       s = keyTransformationHandler.keyToString(1.0);
       assert s.equals("D:1.0");
+
+      s = keyTransformationHandler.keyToString(randomUUID);
+      assert s.equals("U:"+randomUUID);
    }
 
    public void testStringToKeyWithStringAndPrimitives() {
-      key = keyTransformationHandler.stringToKey("S:key1", Thread.currentThread().getContextClassLoader());
+      ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+      key = keyTransformationHandler.stringToKey("S:key1", contextClassLoader);
       assert key.getClass().equals(String.class);
       assert key.equals("key1");
 
-      key = keyTransformationHandler.stringToKey("I:2", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("I:2", contextClassLoader);
       assert key.getClass().equals(Integer.class);
       assert key.equals(2);
 
-      key = keyTransformationHandler.stringToKey("Y:3", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("Y:3", contextClassLoader);
       assert key.getClass().equals(Byte.class);
       assert key.equals((byte) 3);
 
-      key = keyTransformationHandler.stringToKey("F:4.0", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("F:4.0", contextClassLoader);
       assert key.getClass().equals(Float.class);
       assert key.equals((float) 4.0);
 
-      key = keyTransformationHandler.stringToKey("L:5", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("L:5", contextClassLoader);
       assert key.getClass().equals(Long.class);
       assert key.equals((long) 5);
 
-      key = keyTransformationHandler.stringToKey("X:6", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("X:6", contextClassLoader);
       assert key.getClass().equals(Short.class);
       assert key.equals((short) 6);
 
-      key = keyTransformationHandler.stringToKey("B:true", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("B:true", contextClassLoader);
       assert key.getClass().equals(Boolean.class);
       assert key.equals(true);
 
-      key = keyTransformationHandler.stringToKey("D:8.0", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("D:8.0", contextClassLoader);
       assert key.getClass().equals(Double.class);
       assert key.equals(8.0);
 
-      key = keyTransformationHandler.stringToKey("C:9", Thread.currentThread().getContextClassLoader());
+      key = keyTransformationHandler.stringToKey("C:9", contextClassLoader);
       assert key.getClass().equals(Character.class);
       assert key.equals('9');
 
+      key = keyTransformationHandler.stringToKey("U:"+randomUUID.toString(), contextClassLoader);
+      assert key.getClass().equals(UUID.class);
+      assert key.equals(randomUUID);
    }
 
    public void testStringToKeyWithCustomTransformable() {

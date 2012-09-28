@@ -17,48 +17,19 @@
  * MA  02110-1301, USA.
  */
 
-package org.infinispan.configuration.global;
+package org.infinispan.util.concurrent.locks;
+
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * @author Mircea.Markus@jboss.com
- * @since 5.2
- */
-public class SiteConfiguration {
-
-   /**
-    * For now this it the only attribute but more might be added in future.
-    */
-   private final String name;
-
-   public SiteConfiguration(String name) {
-      this.name = name;
-   }
-
-   public String name() {
-      return name;
-   }
-
+* Extends {@link ReentrantLock} only to make the {@link #getOwner()} method public.
+*
+* @author Dan Berindei
+* @since 5.2
+*/
+public class VisibleOwnerReentrantLock extends ReentrantLock {
    @Override
-   public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof SiteConfiguration)) return false;
-
-      SiteConfiguration that = (SiteConfiguration) o;
-
-      if (name != null ? !name.equals(that.name) : that.name != null) return false;
-
-      return true;
-   }
-
-   @Override
-   public int hashCode() {
-      return name != null ? name.hashCode() : 0;
-   }
-
-   @Override
-   public String toString() {
-      return "SiteConfiguration{" +
-            "name='" + name + '\'' +
-            '}';
+   public Thread getOwner() {
+      return super.getOwner();
    }
 }

@@ -44,8 +44,6 @@ import org.infinispan.transaction.xa.GlobalTransaction;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 
-import javax.transaction.Status;
-import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -143,7 +141,7 @@ public class BackupReceiver {
          boolean isTransactional = isTransactional();
          if (isTransactional) {
             
-            // Sanity check -- if the remote command doesn't have modifications, it never should have been propagated!
+            // Sanity check -- if the remote tx doesn't have modifications, it never should have been propagated!
             if( !command.hasModifications() ) {
                throw new IllegalStateException( "TxInvocationContext has no modifications!" );
             }
@@ -202,8 +200,7 @@ public class BackupReceiver {
       }
 
       private void replayModificationsInTransaction(PrepareCommand command, boolean onePhaseCommit) throws Throwable {
-                   
-         TransactionManager tm = txManager();         
+         TransactionManager tm = txManager();
          boolean replaySuccessful = false;         
          try {
              
@@ -212,12 +209,10 @@ public class BackupReceiver {
             replaySuccessful = true;                                                                            
          }
          finally {
-         
             LocalTransaction localTx = txTable().getLocalTransaction( tm.getTransaction() );
             localTx.setFromRemoteSite(true);
             
             if (onePhaseCommit) {
-               
                if( replaySuccessful ) {
                   log.tracef("Committing remotely originated tx %s as it is 1PC", command.getGlobalTransaction());
                   tm.commit();               

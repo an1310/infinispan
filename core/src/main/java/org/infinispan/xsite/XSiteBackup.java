@@ -47,8 +47,7 @@ public class XSiteBackup {
       return timeout;
    }
 
-   @Override
    public String toString() {
-      return "XSiteBackup [siteName=" + siteName + ", sync=" + sync + ", timeout=" + timeout + "]";
-   }     
+      return siteName + " (" + (sync? "sync" : "async") + ", timeout=" + timeout + ")";
+   }
 }

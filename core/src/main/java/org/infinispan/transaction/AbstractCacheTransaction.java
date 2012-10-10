@@ -75,7 +75,12 @@ public abstract class AbstractCacheTransaction implements CacheTransaction {
 
    /** mark as volatile as this might be set from the tx thread code on view change*/
    protected volatile boolean isMarkedForRollback = false;
-      
+   
+   /**
+    * Whether this transaction has been pushed to a new node and needs to be notified on completion.
+    */
+   protected volatile boolean isTransfered = false;
+   
    private EntryVersionsMap updatedEntryVersions;
 
    public AbstractCacheTransaction(GlobalTransaction tx, int viewId) {
@@ -211,6 +216,18 @@ public abstract class AbstractCacheTransaction implements CacheTransaction {
    public void addAllAffectedKeys(Collection<Object> keys) {
       initAffectedKeys();
       affectedKeys.addAll(keys);
+   }
+
+   public void setTransfered( Collection<Object> keys ) {
+
+      // Regardless of whether or not there are acquired keys, we need to
+      // let the enlistment adapter know it needs to send the completion notification
+      isTransfered = true;
+      addAllAffectedKeys( keys );
+   }
+   
+   public boolean isTransfered() {
+      return isTransfered;
    }
    
    private void initAffectedKeys() {

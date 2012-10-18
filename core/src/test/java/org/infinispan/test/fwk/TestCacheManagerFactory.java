@@ -76,6 +76,8 @@ import org.jgroups.util.UUID;
  */
 public class TestCacheManagerFactory {
 
+   private static final int MAX_ASYNC_EXEC_THREADS = 4;
+
    private static AtomicInteger jmxDomainPostfix = new AtomicInteger();
 
    public static final String MARSHALLER = LegacyKeySupportSystemProperties.getProperty("infinispan.test.marshaller.class", "infinispan.marshaller.class");
@@ -524,12 +526,12 @@ public class TestCacheManagerFactory {
 
    public static void minimizeThreads(GlobalConfiguration gc) {
       Properties p = new Properties();
-      p.setProperty("maxThreads", "4");
+      p.setProperty("maxThreads", String.valueOf(MAX_ASYNC_EXEC_THREADS));
       gc.setAsyncTransportExecutorProperties(p);
    }
 
    public static void minimizeThreads(GlobalConfigurationBuilder builder) {
-      builder.asyncTransportExecutor().addProperty("maxThreads", "4");
+      builder.asyncTransportExecutor().addProperty("maxThreads", String.valueOf(MAX_ASYNC_EXEC_THREADS));
    }
 
    public static void amendMarshaller(GlobalConfiguration configuration) {

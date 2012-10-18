@@ -52,6 +52,7 @@ import org.infinispan.factories.annotations.Start;
 import org.infinispan.interceptors.base.BaseRpcInterceptor;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.remoting.transport.jgroups.SuspectException;
+import org.infinispan.transaction.LocalTransaction;
 import org.infinispan.transaction.LockingMode;
 import org.infinispan.util.Immutables;
 import org.infinispan.util.concurrent.NotifyingFutureImpl;
@@ -78,13 +79,13 @@ import java.util.concurrent.TimeoutException;
  * @since 4.0
  */
 public class DistributionInterceptor extends BaseRpcInterceptor {
-   DistributionManager dm;
-   CommandsFactory cf;
-   DataContainer dataContainer;
-   boolean isL1CacheEnabled, needReliableReturnValues;
-   EntryFactory entryFactory;
-   L1Manager l1Manager;
-   LockManager lockManager;
+   private DistributionManager dm;
+   private CommandsFactory cf;
+   private DataContainer dataContainer;
+   private boolean isL1CacheEnabled, needReliableReturnValues;
+   private EntryFactory entryFactory;
+   private L1Manager l1Manager;
+   private LockManager lockManager;
 
    static final RecipientGenerator CLEAR_COMMAND_GENERATOR = new RecipientGenerator() {
       @Override
@@ -176,7 +177,8 @@ public class DistributionInterceptor extends BaseRpcInterceptor {
     * @throws Throwable if there are problems
     */
    private Object remoteGetAndStoreInL1(InvocationContext ctx, Object key, boolean isWrite, FlagAffectedCommand command) throws Throwable {
-      DataLocality locality = dm.getLocality(key);  //todo [anistor] checking this here is a bit late as the state transfer was probably started or even completed since this command entered the chain
+      //DataLocality locality = dm.getLocality(key);
+      DataLocality locality = dm.getReadConsistentHash().isKeyLocalToNode(rpcManager.getAddress(), key) ? DataLocality.LOCAL : DataLocality.NOT_LOCAL;
 
       if (ctx.isOriginLocal() && !locality.isLocal() && isNotInL1(key)) {
          return realRemoteGet(ctx, key, true, isWrite, command);
@@ -347,10 +349,8 @@ public class DistributionInterceptor extends BaseRpcInterceptor {
       }
    }
 
-   private void sendCommitCommand(TxInvocationContext ctx, CommitCommand command)
-         throws TimeoutException, InterruptedException {
-      // we only send the commit command to the nodes that
-      Collection<Address> recipients = dm.getAffectedNodes(ctx.getAffectedKeys());
+   private void sendCommitCommand(TxInvocationContext ctx, CommitCommand command) throws TimeoutException, InterruptedException {
+      Collection<Address> recipients = getCommitNodes(ctx);
       boolean syncCommitPhase = cacheConfiguration.transaction().syncCommitPhase();
       rpcManager.invokeRemotely(recipients, command, syncCommitPhase, true);
    }
@@ -384,7 +384,7 @@ public class DistributionInterceptor extends BaseRpcInterceptor {
    @Override
    public Object visitRollbackCommand(TxInvocationContext ctx, RollbackCommand command) throws Throwable {
       if (shouldInvokeRemoteTxCommand(ctx)) {
-         rpcManager.invokeRemotely(dm.getAffectedNodes(ctx.getAffectedKeys()), command, cacheConfiguration.transaction().syncRollbackPhase(), true);
+         rpcManager.invokeRemotely(getCommitNodes(ctx), command, cacheConfiguration.transaction().syncRollbackPhase(), true);
       }
 
       return invokeNextInterceptor(ctx, command);
@@ -395,8 +395,6 @@ public class DistributionInterceptor extends BaseRpcInterceptor {
       //   a) unsafeUnreliableReturnValues is false
       //   b) unsafeUnreliableReturnValues is true, we are in a TX and the command is conditional
       if (isNeedReliableReturnValues(command) || (command.isConditional() && ctx.isInTxScope())) {
-         boolean skipLocking = hasSkipLocking(command);
-         long lockTimeout = getLockAcquisitionTimeout(command, skipLocking);
          for (Object k : keygen.getKeys())
             remoteGetAndStoreInL1(ctx, k, true, command);
       }
@@ -502,6 +500,13 @@ public class DistributionInterceptor extends BaseRpcInterceptor {
             && (recipients = recipientGenerator.generateRecipients()) != null
             && recipients.size() == 1
             && recipients.get(0).equals(rpcManager.getTransport().getAddress());
+   }
+
+   private Collection<Address> getCommitNodes(TxInvocationContext ctx) {
+      LocalTransaction localTx = (LocalTransaction) ctx.getCacheTransaction();
+      Collection<Address> affectedNodes = dm.getAffectedNodes(ctx.getAffectedKeys());
+      List<Address> members = dm.getConsistentHash().getMembers();
+      return localTx.getCommitNodes(affectedNodes, rpcManager.getTopologyId(), members);
    }
 
    interface KeyGenerator {

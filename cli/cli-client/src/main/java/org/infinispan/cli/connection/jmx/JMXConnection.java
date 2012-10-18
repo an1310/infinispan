@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA  02110-1301, USA.
  */
-package org.infinispan.cli.connection;
+package org.infinispan.cli.connection.jmx;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanException;
@@ -42,6 +40,7 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
 import org.infinispan.cli.Context;
+import org.infinispan.cli.connection.Connection;
 
 public class JMXConnection implements Connection {
    private static final QueryExp INTERPRETER_QUERY = createObjectName("*:type=CacheManager,component=Interpreter,name=*");
@@ -52,22 +51,20 @@ public class JMXConnection implements Connection {
    private final JMXUrl serviceUrl;
    private MBeanServerConnection mbsc;
 
-   public JMXConnection(String connectionString) {
-      serviceUrl = new JMXUrl(connectionString);
+   public JMXConnection(final JMXUrl serviceUrl) {
+      this.serviceUrl = serviceUrl;
    }
 
    @Override
    public void connect(Context context) throws Exception {
-      JMXServiceURL url = new JMXServiceURL(serviceUrl.getUrl());
-      Map<String, Object> env = new HashMap<String, Object>();
-      if (serviceUrl.username != null || serviceUrl.password != null) {
-         env.put(JMXConnector.CREDENTIALS, new String[] { serviceUrl.username, serviceUrl.password });
-      }
-      jmxConnector = JMXConnectorFactory.connect(url, env);
+      JMXServiceURL url = new JMXServiceURL(serviceUrl.getJMXServiceURL());
+      jmxConnector = JMXConnectorFactory.connect(url, serviceUrl.getConnectionEnvironment());
       mbsc = jmxConnector.getMBeanServerConnection();
       cacheManagers = new TreeMap<String, ObjectInstance>();
       for (ObjectInstance mbean : mbsc.queryMBeans(null, INTERPRETER_QUERY)) {
-         cacheManagers.put(unquote(mbean.getObjectName().getKeyProperty("name")), mbean);
+         if ("org.infinispan.cli.interpreter.Interpreter".equals(mbean.getClassName())) {
+            cacheManagers.put(unquote(mbean.getObjectName().getKeyProperty("name")), mbean);
+         }
       }
       cacheManagers = Collections.unmodifiableMap(cacheManagers);
       activeCacheManager = cacheManagers.keySet().iterator().next();
@@ -117,11 +114,11 @@ public class JMXConnection implements Connection {
       }
    }
 
-   public Collection<String> getAvailableCacheNames() {
+   @Override
+   public Collection<String> getAvailableCaches() {
       ObjectInstance manager = cacheManagers.get(activeCacheManager);
       try {
-         String[] cacheNames = (String[]) mbsc.invoke(manager.getObjectName(), "getCacheNames", new Object[0],
-               new String[0]);
+         String[] cacheNames = (String[]) mbsc.getAttribute(manager.getObjectName(), "cacheNames");
          List<String> cacheList = Arrays.asList(cacheNames);
          Collections.sort(cacheList);
          return cacheList;
@@ -158,7 +155,7 @@ public class JMXConnection implements Connection {
       }
    }
 
-   private static ObjectName createObjectName(final String name) {
+   private static ObjectName createObjectName(String name) {
       try {
          return new ObjectName(name);
       } catch (MalformedObjectNameException e) {
@@ -171,33 +168,5 @@ public class JMXConnection implements Connection {
          s = s.substring(1, s.length() - 1);
       }
       return s;
-   }
-
-   public static class JMXUrl {
-      private static final Pattern JMX_URL = Pattern
-            .compile("^(?:(?![^:@]+:[^:@/]*@)([^:/?#.]+):)?(?://)?((?:(([^:@]*):?([^:@]*))?@)?([^:/?#]*)(?::(\\d*))?)");
-      private String hostname;
-      private int port;
-      private String username;
-      private String password;
-
-      public String getUrl() {
-         return "service:jmx:rmi:///jndi/rmi://" + hostname + ":" + port + "/jmxrmi";
-      }
-
-      public JMXUrl(String connectionString) {
-         Matcher matcher = JMX_URL.matcher(connectionString);
-         if (!matcher.matches())
-            throw new IllegalArgumentException(connectionString);
-         username = matcher.group(4);
-         password = matcher.group(5);
-         hostname = matcher.group(6);
-         port = Integer.parseInt(matcher.group(7));
-      }
-
-      @Override
-      public String toString() {
-         return "jmx://" + (username == null ? "" : username + "@") + hostname + ":" + port;
-      }
    }
 }

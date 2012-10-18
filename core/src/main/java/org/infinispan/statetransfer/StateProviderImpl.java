@@ -41,7 +41,6 @@ import org.infinispan.notifications.cachelistener.event.TopologyChangedEvent;
 import org.infinispan.remoting.rpc.RpcManager;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.topology.CacheTopology;
-import org.infinispan.transaction.AbstractCacheTransaction;
 import org.infinispan.transaction.TransactionTable;
 import org.infinispan.transaction.xa.CacheTransaction;
 import org.infinispan.util.logging.Log;
@@ -220,9 +219,9 @@ public class StateProviderImpl implements StateProvider {
    }
 
    private void collectTransactionsToTransfer(List<TransactionInfo> transactionsToTransfer,
-                                              Collection<? extends AbstractCacheTransaction> transactions,
+                                              Collection<? extends CacheTransaction> transactions,
                                               Set<Integer> segments) {
-      for (AbstractCacheTransaction tx : transactions) {
+      for (CacheTransaction tx : transactions) {
          // transfer only locked keys that belong to requested segments, located on local node
          Set<Object> lockedKeys = new HashSet<Object>();
          for (Object key : tx.getLockedKeys()) {
@@ -241,10 +240,7 @@ public class StateProviderImpl implements StateProvider {
             if (txModifications != null) {
                modifications = txModifications.toArray(new WriteCommand[txModifications.size()]);
             }
-            
-            // Let the outside world know we're being pushed.
-            tx.setTransfered(lockedKeys);            
-            transactionsToTransfer.add(new TransactionInfo(tx.getGlobalTransaction(), tx.getViewId(), modifications, lockedKeys));
+            transactionsToTransfer.add(new TransactionInfo(tx.getGlobalTransaction(), tx.getTopologyId(), modifications, lockedKeys));
          }
       }
    }

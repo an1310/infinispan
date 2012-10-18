@@ -25,6 +25,12 @@ import org.infinispan.cli.interpreter.result.Result;
 import org.infinispan.cli.interpreter.result.StatementException;
 import org.infinispan.cli.interpreter.session.Session;
 
+/**
+ * Rolls back a running transaction
+ *
+ * @author Tristan Tarrant
+ * @since 5.2
+ */
 public class RollbackTransactionStatement extends AbstractTransactionStatement {
 
    public RollbackTransactionStatement(final String cacheName) {

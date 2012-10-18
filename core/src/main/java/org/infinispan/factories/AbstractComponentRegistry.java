@@ -508,7 +508,7 @@ public abstract class AbstractComponentRegistry implements Lifecycle, Cloneable 
       for (Component c : new HashSet<Component>(componentLookup.values())) {
          // the component is volatile!!
          if (!c.metadata.isSurvivesRestarts()) {
-            getLog().tracef("Removing volatile component %s", c.metadata.getName());
+            getLog().tracef("Removing volatile component %s", c.name);
             componentLookup.remove(c.name);
          }
       }
@@ -837,27 +837,6 @@ public abstract class AbstractComponentRegistry implements Lifecycle, Cloneable 
                }
             }
          }
-      }
-   }
-
-
-   static class InvokableInjectionMethod {
-      ComponentMetadata.InjectMetadata metadata;
-      ConcreteParameter[] parameters;
-
-      InvokableInjectionMethod(ComponentMetadata.InjectMetadata metadata, ConcreteParameter[] parameters) {
-         this.metadata = metadata;
-         this.parameters = parameters;
-      }
-   }
-
-   static class ConcreteParameter {
-      String name;
-      Class<?> type;
-
-      ConcreteParameter(String name, Class<?> type) {
-         this.name = name;
-         this.type = type;
       }
    }
 

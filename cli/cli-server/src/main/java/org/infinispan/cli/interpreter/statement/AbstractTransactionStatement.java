@@ -31,12 +31,7 @@ public abstract class AbstractTransactionStatement implements Statement {
    }
 
    protected TransactionManager getTransactionManager(Session session) {
-      Cache<Object, Object> cache;
-      if (cacheName!=null) {
-         cache = (Cache<Object, Object>) session.getCache(cacheName);
-      } else {
-         cache = (Cache<Object, Object>) session.getCache();
-      }
+      Cache<Object, Object> cache = session.getCache(cacheName);
       return cache.getAdvancedCache().getTransactionManager();
    }
 }

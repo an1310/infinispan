@@ -98,8 +98,8 @@ public interface CacheTransaction {
    boolean keyRead(Object key);
 
    void addReadKey(Object key);
-   
-   public void markForRollback(boolean markForRollback);
 
-   public boolean isMarkedForRollback();
+   boolean isMarkedForRollback();
+
+   void markForRollback(boolean markForRollback);
 }

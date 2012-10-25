@@ -424,6 +424,12 @@ public class Parser52 implements ConfigurationParser<ConfigurationBuilderHolder>
             case USE_1PC_FOR_AUTOCOMMIT_TX:
                builder.transaction().use1PcForAutoCommitTransactions(Boolean.parseBoolean(value));
                break;
+            case REAPER_WAKE_UP_INTERVAL:
+               builder.transaction().reaperWakeUpInterval(Long.parseLong(value));
+               break;
+            case COMPLETED_TX_TIMEOUT:
+               builder.transaction().completedTxTimeout(Long.parseLong(value));
+               break;
             default:
                throw ParseUtils.unexpectedAttribute(reader, i);
          }
@@ -1375,6 +1381,7 @@ public class Parser52 implements ConfigurationParser<ConfigurationBuilderHolder>
          switch (attribute) {
             case FACTORY:
                builder.clustering().hash().consistentHashFactory(Util.<ConsistentHashFactory>getInstance(value, holder.getClassLoader()));
+               break;
             case HASH_FUNCTION_CLASS:
                builder.clustering().hash().hash(Util.<Hash>getInstance(value, holder.getClassLoader()));
                break;

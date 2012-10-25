@@ -51,13 +51,19 @@ public class RollbackCommand extends AbstractTransactionBoundaryCommand {
    }
 
    @Override
+   public Object perform(InvocationContext ctx) throws Throwable {
+      txTable.markTransactionCompleted(globalTx);
+      return super.perform(ctx);
+   }
+
+   @Override
    public Object acceptVisitor(InvocationContext ctx, Visitor visitor) throws Throwable {
       return visitor.visitRollbackCommand((TxInvocationContext) ctx, this);
    }
 
    @Override
    public void visitRemoteTransaction(RemoteTransaction tx) {
-      tx.invalidate();
+      tx.markForRollback(true);
    }
 
    @Override

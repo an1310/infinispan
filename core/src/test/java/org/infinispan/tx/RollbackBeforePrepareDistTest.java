@@ -17,30 +17,16 @@
  * MA  02110-1301, USA.
  */
 
-package org.infinispan.xsite;
+package org.infinispan.tx;
 
-import org.infinispan.factories.annotations.Inject;
-import org.infinispan.jmx.annotations.MBean;
-import org.infinispan.jmx.annotations.ManagedOperation;
-import org.rhq.helpers.pluginAnnotations.agent.Operation;
+import org.infinispan.configuration.cache.CacheMode;
+import org.testng.annotations.Test;
 
-/**
- * @author Mircea Markus
- * @since 5.2
- */
-@MBean(objectName = "XSiteAdmin", description = "Exposes tooling for handling backing up data to remote sites.")
-public class CrossSiteReplicationOperations {
+@Test(testName = "tx.RollbackBeforePrepareDistTest", groups = "functional")
+public class RollbackBeforePrepareDistTest extends RollbackBeforePrepareTest {
 
-   private volatile BackupSender backupSender;
-
-   @Inject
-   public void init(BackupSender backupSender) {
-      this.backupSender = backupSender;
-   }
-
-   @Operation(displayName = "Brings the given site back online on this node.")
-   @ManagedOperation(description = "Brings the given site back online on this node.")
-   public String bringSiteOnline(String siteName) {
-      return backupSender.bringSiteOnline(siteName).toString();
+   public RollbackBeforePrepareDistTest() {
+      cacheMode = CacheMode.DIST_SYNC;
+      numOwners = 3;
    }
 }

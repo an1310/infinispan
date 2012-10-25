@@ -34,6 +34,7 @@ import org.infinispan.configuration.cache.VersioningScheme;
 import org.infinispan.container.DataContainer;
 import org.infinispan.container.entries.ImmortalCacheEntry;
 import org.infinispan.container.entries.InternalCacheEntry;
+import org.infinispan.distribution.TestAddress;
 import org.infinispan.distribution.ch.DefaultConsistentHash;
 import org.infinispan.distribution.ch.DefaultConsistentHashFactory;
 import org.infinispan.loaders.CacheLoaderManager;
@@ -50,7 +51,6 @@ import org.infinispan.util.concurrent.IsolationLevel;
 import org.infinispan.util.concurrent.NotifyingNotifiableFuture;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
-import org.mockito.InOrder;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.testng.annotations.BeforeTest;
@@ -136,7 +136,7 @@ public class StateProviderTest {
       // create CHes
       DefaultConsistentHashFactory chf = new DefaultConsistentHashFactory();
       DefaultConsistentHash ch1 = chf.create(new MurmurHash3(), 2, 4, members1);
-      DefaultConsistentHash ch2 = chf.updateMembers(ch1, members2);   //todo [anistor] it seems that address 6 is not used for un-owned segments
+      DefaultConsistentHash ch2 = chf.updateMembers(ch1, members2);
 
       // create dependencies
       when(mockExecutorService.submit(any(Runnable.class))).thenAnswer(new Answer<Future<?>>() {
@@ -155,8 +155,8 @@ public class StateProviderTest {
             dataContainer, transactionTable, stateTransferLock);
 
       final List<InternalCacheEntry> cacheEntries = new ArrayList<InternalCacheEntry>();
-      Object key1 = new TestKey("key1", 0, ch1);
-      Object key2 = new TestKey("key2", 0, ch1);
+      Object key1 = new TestKey("key1", 2, ch1);
+      Object key2 = new TestKey("key2", 2, ch1);
       cacheEntries.add(new ImmortalCacheEntry(key1, "value1"));
       cacheEntries.add(new ImmortalCacheEntry(key2, "value2"));
       when(dataContainer.iterator()).thenAnswer(new Answer<Iterator<InternalCacheEntry>>() {
@@ -171,7 +171,8 @@ public class StateProviderTest {
       stateProvider.onTopologyUpdate(new CacheTopology(1, ch1, ch1), false);
 
       log.debug("ch1: " + ch1);
-      List<TransactionInfo> transactions = stateProvider.getTransactionsForSegments(members1.get(0), 1, new HashSet<Integer>(Arrays.asList(0, 3)));
+      Set<Integer> segmentsToRequest = ch1.getSegmentsForOwner(members1.get(0));
+      List<TransactionInfo> transactions = stateProvider.getTransactionsForSegments(members1.get(0), 1, segmentsToRequest);
       assertEquals(0, transactions.size());
 
       try {
@@ -272,7 +273,8 @@ public class StateProviderTest {
       stateProvider.onTopologyUpdate(new CacheTopology(1, ch1, ch1), false);
 
       log.debug("ch1: " + ch1);
-      List<TransactionInfo> transactions = stateProvider.getTransactionsForSegments(members1.get(0), 1, new HashSet<Integer>(Arrays.asList(0, 3)));
+      Set<Integer> segmentsToRequest = ch1.getSegmentsForOwner(members1.get(0));
+      List<TransactionInfo> transactions = stateProvider.getTransactionsForSegments(members1.get(0), 1, segmentsToRequest);
       assertEquals(0, transactions.size());
 
       try {

@@ -280,6 +280,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager {
                try {
                   return command.perform(null);
                } catch (Throwable t) {
+                  log.errorf(t, "Failed to execute ReplicableCommand %s on coordinator async: %s", command, t.getMessage());
                   throw new Exception(t);
                }
             }

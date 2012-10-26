@@ -118,23 +118,6 @@ public class ClusterTopologyManagerImpl implements ClusterTopologyManager {
          viewId = Integer.MAX_VALUE;
          viewUpdateLock.notifyAll();
       }
-
-   }
-
-   @Override
-   public void triggerRebalance(final String cacheName) throws Exception {
-      asyncTransportExecutor.submit(new Callable<Object>() {
-         @Override
-         public Object call() throws Exception {
-            try {
-               startRebalance(cacheName);
-               return null;
-            } catch (Throwable t) {
-               log.errorf(t, "Failed to start rebalance: %s", t.getMessage());
-               throw new Exception(t);
-            }
-         }
-      });
    }
 
    @Override
@@ -352,7 +335,8 @@ public class ClusterTopologyManagerImpl implements ClusterTopologyManager {
       }
    }
 
-   private void startRebalance(String cacheName) throws Exception {
+   @Override
+   public void triggerRebalance(String cacheName) throws Exception {
       ClusterCacheStatus cacheStatus = cacheStatusMap.get(cacheName);
 
       synchronized (cacheStatus) {
@@ -549,18 +533,17 @@ public class ClusterTopologyManagerImpl implements ClusterTopologyManager {
          }
       });
 
-      // now invoke the command on the local node
-      Future<Object> localFuture = asyncTransportExecutor.submit(new Callable<Object>() {
-         @Override
-         public Object call() throws Exception {
-            gcr.wireDependencies(command);
-            try {
-               return command.perform(null);
-            } catch (Throwable t) {
-               throw new Exception(t);
-            }
-         }
-      });
+      // invoke the command on the local node
+      gcr.wireDependencies(command);
+      Response localResponse;
+      try {
+         localResponse = (Response) command.perform(null);
+      } catch (Throwable throwable) {
+         throw new Exception(throwable);
+      }
+      if (!localResponse.isSuccessful()) {
+         throw new CacheException("Unsuccessful local response");
+      }
 
       // wait for the remote commands to finish
       Map<Address, Response> responseMap = remoteFuture.get(timeout, TimeUnit.MILLISECONDS);
@@ -577,32 +560,9 @@ public class ClusterTopologyManagerImpl implements ClusterTopologyManager {
          responseValues.put(address, ((SuccessfulResponse) response).getResponseValue());
       }
 
-      // now wait for the local command
-      Response localResponse = (Response) localFuture.get(timeout, TimeUnit.MILLISECONDS);
-      if (!localResponse.isSuccessful()) {
-         throw new CacheException("Unsuccessful local response");
-      }
       responseValues.put(transport.getAddress(), ((SuccessfulResponse) localResponse).getResponseValue());
 
       return responseValues;
-   }
-
-   private void executeOnClusterAsync(final ReplicableCommand command)
-         throws Exception {
-      transport.invokeRemotely(null, command, ResponseMode.ASYNCHRONOUS_WITH_SYNC_MARSHALLING, -1, true, null);
-
-      asyncTransportExecutor.submit(new Callable<Object>() {
-         @Override
-         public Object call() throws Exception {
-            gcr.wireDependencies(command);
-            try {
-               return command.perform(null);
-            } catch (Throwable t) {
-               log.errorf(t, "Failed to execute ReplicableCommand %s on cluster async: %s", command, t.getMessage());
-               throw new Exception(t);
-            }
-         }
-      });
    }
 
    private int getGlobalTimeout() {

@@ -6,10 +6,16 @@
   <packaging>pom</packaging>
   <name>monitoring-parent</name>
   <description>Parent project for JDG/Infinispan monitoring solution</description>
+  
+  <parent>
+      <groupId>org.infinispan</groupId>
+      <artifactId>infinispan-parent</artifactId>
+      <version>5.2.0-SNAPSHOT</version>
+      <relativePath>../parent/pom.xml</relativePath>
+   </parent>
+   
   <modules>
   	<module>monitoring-service</module>
   	<module>monitoring-domain</module>
-  	<module>monitoring-jmx</module>
-  	<module>memory-usage</module>
   </modules>
 </project>

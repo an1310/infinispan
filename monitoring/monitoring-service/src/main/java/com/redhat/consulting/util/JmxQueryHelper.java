@@ -40,7 +40,7 @@ public class JmxQueryHelper {
     protected static final String XFER_IN_PROGRESS = "stateTransferInProgress";
     protected static final String NUM_ENTRIES = "numberOfEntries";
     protected static final String NUM_OWNERS = "numOwners";
-    protected static final String SIMPLE_CACHE_NAME = "cacheName";
+    protected static final String SIMPLE_CACHE_NAME = "simpleCacheName";
     protected static final String NODE_NAME = "nodeAddress";
     protected static final String CACHE_NAME_KEY = "name";
     protected static final String INCOMING_MESSAGES = "ReceivedMessages";

@@ -183,7 +183,6 @@
       <version.maven.source>2.1.2</version.maven.source>
       <version.jacoco>0.5.10.201208310627</version.jacoco>
       <version.asm>3.3.1</version.asm>
-	  <version.org.jboss.libra>0.2.0-SNAPSHOT</version.org.jboss.libra>
       <reportTitle>Infinispan JaCoCo Report</reportTitle>
       <dir.ispn>../</dir.ispn>
       <dir.report>../jacoco-html</dir.report>
@@ -786,11 +785,6 @@
             <artifactId>memcached</artifactId>
             <version>${version.spymemcached}</version>
          </dependency>
-		 <dependency>
-			<groupId>org.jboss.libra</groupId>
-			<artifactId>jboss-libra</artifactId>
-			<version>${version.org.jboss.libra}</version>
-		 </dependency>
       </dependencies>
    </dependencyManagement>
    <dependencies>

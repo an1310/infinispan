@@ -640,6 +640,15 @@ public class CacheImpl<K, V> extends CacheSupport<K, V> implements AdvancedCache
       return getConfiguration().toXmlString();
    }
 
+   /**
+    * Returns the configured number of owners
+    */
+   @ManagedAttribute(description = "Returns value of numOwners")
+   @Metric(displayName = "Value of numOwners", dataType = DataType.TRAIT, displayType = DisplayType.SUMMARY)
+   public String getNumOwners() {
+      return Integer.toString(getConfiguration().getNumOwners());
+   }
+   
    @Override
    public String getVersion() {
       return Version.VERSION;

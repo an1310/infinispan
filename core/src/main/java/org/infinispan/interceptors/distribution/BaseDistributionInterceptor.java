@@ -42,6 +42,7 @@ import org.infinispan.remoting.responses.SuccessfulResponse;
 import org.infinispan.remoting.rpc.ResponseFilter;
 import org.infinispan.remoting.rpc.ResponseMode;
 import org.infinispan.remoting.transport.Address;
+import org.infinispan.remoting.transport.TopologyAwareAddress;
 import org.infinispan.transaction.xa.GlobalTransaction;
 import org.infinispan.util.Immutables;
 import org.infinispan.util.logging.Log;
@@ -81,8 +82,19 @@ public abstract class BaseDistributionInterceptor extends ClusteringInterceptor 
    protected InternalCacheEntry retrieveFromRemoteSource(Object key, InvocationContext ctx, boolean acquireRemoteLock, FlagAffectedCommand command) throws Exception {
       GlobalTransaction gtx = acquireRemoteLock ? ((TxInvocationContext)ctx).getGlobalTransaction() : null;
       ClusteredGetCommand get = cf.buildClusteredGetCommand(key, command.getFlags(), acquireRemoteLock, gtx);
-
-      List<Address> targets = new ArrayList<Address>(stateTransferManager.getCacheTopology().getReadConsistentHash().locateOwners(key));
+      
+      Address localAddress = rpcManager.getAddress();
+      List<Address> targets;
+      if( localAddress instanceof TopologyAwareAddress ) {
+         
+         targets = buildTopologyAddressTargets(
+               (TopologyAwareAddress)localAddress,
+               stateTransferManager.getCacheTopology().getReadConsistentHash().locateOwners(key) ); 
+      }
+      else {
+         targets = new ArrayList<Address>( stateTransferManager.getCacheTopology().getReadConsistentHash().locateOwners(key) );
+      }
+      
       // if any of the recipients has left the cluster since the command was issued, just don't wait for its response
       targets.retainAll(rpcManager.getTransport().getMembers());
       ResponseFilter filter = new ClusteredGetResponseValidityFilter(targets, rpcManager.getAddress());
@@ -142,6 +154,51 @@ public abstract class BaseDistributionInterceptor extends ClusteringInterceptor 
             && recipients.size() == 1
             && recipients.get(0).equals(rpcManager.getTransport().getAddress());
    }
+   
+   /**
+    * Sorts addresses by the topology characteristics.
+    */
+   protected List<Address> buildTopologyAddressTargets( TopologyAwareAddress localAddress, List<Address> targets ) {
+
+      List<Address> sameMachineList = new LinkedList<Address>();
+      List<Address> sameRackList = new LinkedList<Address>();
+      List<Address> sameSiteList = new LinkedList<Address>();
+      List<Address> otherList = new LinkedList<Address>();
+      List<Address> result = new ArrayList<Address>( targets.size() );
+
+      for( Address a : targets ) {
+
+         if (a instanceof TopologyAwareAddress) {
+
+            if (localAddress.isSameMachine((TopologyAwareAddress) a)) { 
+               sameMachineList.add(a); 
+            } else if (localAddress.isSameRack((TopologyAwareAddress) a)) {
+               sameRackList.add(a);
+            } else if(localAddress.isSameSite((TopologyAwareAddress) a)) {
+               sameSiteList.add(a);               
+            } else {
+               otherList.add(a);               
+            }
+         } else {         
+            otherList.add(a);            
+         }
+      }
+         
+      if ( !sameMachineList.isEmpty() ) {
+         result.addAll( sameMachineList );
+      }
+      if ( !sameRackList.isEmpty() ) {
+         result.addAll( sameRackList );
+      }
+      if ( !sameSiteList.isEmpty() ) {
+         result.addAll( sameSiteList );
+      }
+      if( !otherList.isEmpty() ) {
+         result.addAll( otherList );
+      }
+         
+      return result;      
+   }
 
    interface KeyGenerator {
       Collection<Object> getKeys();
@@ -196,5 +253,4 @@ public abstract class BaseDistributionInterceptor extends ClusteringInterceptor 
          return keys;
       }
    }
-
 }

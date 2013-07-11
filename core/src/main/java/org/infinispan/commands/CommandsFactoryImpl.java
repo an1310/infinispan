@@ -301,7 +301,7 @@ public class CommandsFactoryImpl implements CommandsFactory {
    }
 
    @Override
-   public ClusteredGetCommand buildClusteredGetCommand(Object key, Set<Flag> flags, boolean acquireRemoteLock, GlobalTransaction gtx) {
+   public ClusteredGetCommand buildClusteredGetCommand(Object key, Set<Flag> flags, boolean acquireRemoteLock, GlobalTransaction gtx, int staggeredGetWaitTimeout) {      
       return new ClusteredGetCommand(key, cacheName, flags, acquireRemoteLock, gtx);
    }
 

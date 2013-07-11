@@ -35,15 +35,23 @@ public class HashConfiguration {
    private final int numSegments;
    private final GroupsConfiguration groupsConfiguration;
    private final StateTransferConfiguration stateTransferConfiguration;
+   private final int staggeredGetWaitTime;
 
-   HashConfiguration(ConsistentHashFactory consistentHashFactory, Hash hash, int numOwners, int numSegments,
-                     GroupsConfiguration groupsConfiguration, StateTransferConfiguration stateTransferConfiguration) {
+   HashConfiguration(
+         ConsistentHashFactory consistentHashFactory, 
+         Hash hash, 
+         int numOwners, 
+         int numSegments,
+         GroupsConfiguration groupsConfiguration, 
+         StateTransferConfiguration stateTransferConfiguration,
+         int staggeredGetWaitTime) {
       this.consistentHashFactory = consistentHashFactory;
       this.hash = hash;
       this.numOwners = numOwners;
       this.numSegments = numSegments;
       this.groupsConfiguration = groupsConfiguration;
       this.stateTransferConfiguration = stateTransferConfiguration;
+      this.staggeredGetWaitTime = staggeredGetWaitTime;
    }
 
    /**
@@ -98,7 +106,15 @@ public class HashConfiguration {
    public int numSegments() {
       return numSegments;
    }
-
+   
+   /**
+    * If staggered gets are enabled, this value controls how long the first thread waits until
+    * subsequent gets are sent.  A value of 0 effectively disables this parameter. 
+    */
+   public int getStaggeredGetWaitTime() {
+      return staggeredGetWaitTime;
+   }
+   
    /**
     * If false, no rebalancing or rehashing will take place when a new node joins the cluster or a
     * node leaves
@@ -140,6 +156,7 @@ public class HashConfiguration {
             ", hash=" + hash +
             ", numOwners=" + numOwners +
             ", numSegments=" + numSegments +
+            ", staggeredGetWaitTime=" + staggeredGetWaitTime +
             ", groupsConfiguration=" + groupsConfiguration +
             ", stateTransferConfiguration=" + stateTransferConfiguration +
             '}';
@@ -154,6 +171,7 @@ public class HashConfiguration {
 
       if (numOwners != that.numOwners) return false;
       if (numSegments != that.numSegments) return false;
+      if( staggeredGetWaitTime != that.staggeredGetWaitTime ) return false;
       if (consistentHashFactory != null ? !consistentHashFactory.equals(that.consistentHashFactory) : that.consistentHashFactory != null)
          return false;
       if (groupsConfiguration != null ? !groupsConfiguration.equals(that.groupsConfiguration) : that.groupsConfiguration != null)
@@ -172,9 +190,9 @@ public class HashConfiguration {
       result = 31 * result + (hash != null ? hash.hashCode() : 0);
       result = 31 * result + numOwners;
       result = 31 * result + numSegments;
+      result = 31 * result + staggeredGetWaitTime;
       result = 31 * result + (groupsConfiguration != null ? groupsConfiguration.hashCode() : 0);
       result = 31 * result + (stateTransferConfiguration != null ? stateTransferConfiguration.hashCode() : 0);
       return result;
    }
-
 }

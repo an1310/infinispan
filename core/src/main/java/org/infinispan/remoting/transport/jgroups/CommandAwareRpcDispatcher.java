@@ -35,6 +35,7 @@ import org.infinispan.statetransfer.StateRequestCommand;
 import org.infinispan.statetransfer.StateResponseCommand;
 import org.infinispan.remoting.InboundInvocationHandler;
 import org.infinispan.remoting.RpcException;
+import org.infinispan.remoting.responses.ClusteredGetResponseValidityFilter;
 import org.infinispan.remoting.responses.ExceptionResponse;
 import org.infinispan.remoting.responses.Response;
 import org.infinispan.topology.CacheTopologyControlCommand;
@@ -344,21 +345,35 @@ public class CommandAwareRpcDispatcher extends RpcDispatcher {
             // This is possibly a remote GET.
             // These UNICASTs happen in parallel using sendMessageWithFuture.  Each future has a listener attached
             // (see FutureCollator) and the first successful response is used.
-            FutureCollator futureCollator = new FutureCollator(filter, timeout);
             
-            // TODO: Make this a configuration option, i.e. 0=disable
-            // Also consider making this a flag or something like that to
-            // have finer-grained control.
-            final int staggeringTimeout = 20;
-                        
+            FutureCollator futureCollator;            
+            int staggeredGetTimeout = 0;  
+            
+            if( command instanceof ClusteredGetCommand ) {
+                           
+               JGroupsResponseFilterAdapter jgroupsFilter = (JGroupsResponseFilterAdapter)filter;
+               if( jgroupsFilter.getResponseFilter() instanceof ClusteredGetResponseValidityFilter ) {               
+                  staggeredGetTimeout = ((ClusteredGetResponseValidityFilter)jgroupsFilter.getResponseFilter()).getStaggeredGetTimeout();               
+               }
+            }                        
+            
+            if( staggeredGetTimeout > 0 ) {
+               futureCollator = new FutureCollator(filter, timeout);
+            }
+            else {
+               futureCollator = new FutureCollator(filter, dests.size(), timeout );
+            }
+            
             for (Address a : dests) {
                NotifyingFuture<Object> f = card.sendMessageWithFuture(constructMessage(buf, a, oob, mode, rsvp), opts);
                futureCollator.watchFuture(f, a);
-               
+
                // CES: Stagger remote GETs.  This sends a message to the first address in the list
                // This can be optimized to be an address with the same topology (machine, site, etc).
-               if (command instanceof ClusteredGetCommand && futureCollator.waitForResponse(staggeringTimeout)) 
-                  break;
+               if (command instanceof ClusteredGetCommand && 
+                   staggeredGetTimeout > 0 && 
+                   futureCollator.waitForResponse(staggeredGetTimeout)) 
+                  break;               
             }
             
             retval = futureCollator.getResponseList();
@@ -443,19 +458,31 @@ public class CommandAwareRpcDispatcher extends RpcDispatcher {
       private Exception exception;
       @GuardedBy("this")
       private int expectedResponses = 0;
+      @GuardedBy("this")
+      private boolean useExpectedResponses;
 
       FutureCollator(RspFilter filter, long timeout) {
+         this.filter = filter;      
+         this.timeout = timeout;
+         this.futures = new HashMap<Future<Object>, SenderContainer>(expectedResponses);
+         this.useExpectedResponses = false;
+      }
+
+      FutureCollator(RspFilter filter, int expectedResponses, long timeout) {
          this.filter = filter;
          this.expectedResponses = expectedResponses;
          this.timeout = timeout;
          this.futures = new HashMap<Future<Object>, SenderContainer>(expectedResponses);
+         this.useExpectedResponses = true;
       }
-
-      public synchronized void watchFuture(NotifyingFuture<Object> f, Address address) {
-         if (expectedResponses >= 0) {
-            expectedResponses++;
-         } else {
-            throw new IllegalStateException();
+                  
+      public synchronized void watchFuture(NotifyingFuture<Object> f, Address address) {         
+         if (!useExpectedResponses ) {
+            if( expectedResponses >= 0) {         
+               expectedResponses++;
+            } else {
+               throw new IllegalStateException();
+            }
          }
          futures.put(f, new SenderContainer(address));
          f.setListener(this);

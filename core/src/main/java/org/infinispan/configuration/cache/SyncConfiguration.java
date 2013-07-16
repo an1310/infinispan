@@ -26,10 +26,12 @@ package org.infinispan.configuration.cache;
 public class SyncConfiguration {
 
    private long replTimeout;
+   private boolean useQuorum;
 
 
-   SyncConfiguration(long replTimeout) {
+   SyncConfiguration(long replTimeout, boolean useQuorum) {
       this.replTimeout = replTimeout;
+      this.useQuorum = useQuorum;
    }
 
    /**
@@ -48,11 +50,29 @@ public class SyncConfiguration {
       this.replTimeout = l;
       return this;
    }
-
+   
+   /**
+    * This is a configuration option to only wait for the first response before returning from a sync call.
+    * Note that if the call originates on the primary owner, the backup call is asynchronous.
+    */
+   public boolean useQuorum() {
+      return this.useQuorum;
+   }
+   
+   /**
+    * This is a configuration option to only wait for the first response before returning from a sync call.
+    * Note that if the call originates on the primary owner, the backup call is asynchronous.
+    */
+   public SyncConfiguration useQuorum( boolean useQuorum ) {
+      this.useQuorum = useQuorum;
+      return this;
+   }
+   
    @Override
    public String toString() {
       return "SyncConfiguration{" +
             "replTimeout=" + replTimeout +
+            "useQuorum=" + useQuorum +
             '}';
    }
 
@@ -64,13 +84,15 @@ public class SyncConfiguration {
       SyncConfiguration that = (SyncConfiguration) o;
 
       if (replTimeout != that.replTimeout) return false;
+      if (useQuorum != that.useQuorum) return false;
 
       return true;
    }
 
    @Override
    public int hashCode() {
-      return (int) (replTimeout ^ (replTimeout >>> 32));
+      int result = (int) (replTimeout ^ (replTimeout >>> 32));
+      result = 31 * result + (useQuorum ? 1 : 0);
+      return result;
    }
-
 }

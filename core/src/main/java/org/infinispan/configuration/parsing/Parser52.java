@@ -1290,7 +1290,8 @@ public class Parser52 implements ConfigurationParser<ConfigurationBuilderHolder>
             case REPL_TIMEOUT:
                builder.clustering().sync().replTimeout(Long.parseLong(value));
                break;
-
+            case USE_QUORUM:
+               builder.clustering().sync().useQuorum(Boolean.parseBoolean(value));
             default:
                throw ParseUtils.unexpectedAttribute(reader, i);
          }

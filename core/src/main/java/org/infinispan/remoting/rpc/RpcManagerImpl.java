@@ -301,7 +301,12 @@ public class RpcManagerImpl implements RpcManager {
    }
 
    private ResponseMode getResponseMode(boolean sync) {
-      return sync ? ResponseMode.SYNCHRONOUS : ResponseMode.getAsyncResponseMode(configuration);
+      if( sync ) {
+         return configuration.clustering().sync().useQuorum() ? ResponseMode.SYNCHRONOUS_QUORUM : ResponseMode.SYNCHRONOUS;
+      }
+      else {
+         return ResponseMode.getAsyncResponseMode(configuration);
+      }
    }
 
    /**

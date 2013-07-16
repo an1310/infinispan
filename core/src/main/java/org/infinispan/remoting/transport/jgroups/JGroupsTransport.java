@@ -512,10 +512,12 @@ public class JGroupsTransport extends AbstractTransport implements MembershipLis
             if (!skipRpc) {
                if (singleRecipient) {
                   if (singleJGAddress == null) singleJGAddress = jgAddressList.get(0);
-                  singleResponse = dispatcher.invokeRemoteCommand(singleJGAddress, rpcCommand, toJGroupsMode(mode), timeout,
+                  
+                  // Change the mode if necessary                  
+                  singleResponse = dispatcher.invokeRemoteCommand(singleJGAddress, rpcCommand, toJGroupsMode(mode, 1), timeout,
                                                                   usePriorityQueue, asyncMarshalling);
                } else {
-                  rsps = dispatcher.invokeRemoteCommands(jgAddressList, rpcCommand, toJGroupsMode(mode), timeout,
+                  rsps = dispatcher.invokeRemoteCommands(jgAddressList, rpcCommand, toJGroupsMode(mode, jgAddressList.size()), timeout,
                                                          recipients != null, usePriorityQueue, toJGroupsFilter(responseFilter),
                                                          asyncMarshalling, ignoreLeavers);
                }
@@ -575,12 +577,26 @@ public class JGroupsTransport extends AbstractTransport implements MembershipLis
          case SYNCHRONOUS:
          case SYNCHRONOUS_IGNORE_LEAVERS:
             return org.jgroups.blocks.ResponseMode.GET_ALL;
-         case WAIT_FOR_VALID_RESPONSE:
+         case WAIT_FOR_VALID_RESPONSE:         
             return org.jgroups.blocks.ResponseMode.GET_FIRST;
+         case SYNCHRONOUS_QUORUM:
+            return org.jgroups.blocks.ResponseMode.GET_MAJORITY;
       }
       throw new CacheException("Unknown response mode " + mode);
    }
 
+   private static org.jgroups.blocks.ResponseMode toJGroupsMode(ResponseMode mode, int size ) {
+      
+      if( mode == ResponseMode.SYNCHRONOUS_QUORUM && size == 1 ) {
+         return org.jgroups.blocks.ResponseMode.GET_NONE;
+      }
+      else if( mode == ResponseMode.SYNCHRONOUS_QUORUM && size == 2 ) {
+         return org.jgroups.blocks.ResponseMode.GET_FIRST;
+      }
+      return toJGroupsMode( mode );
+   }
+
+   
    private RspFilter toJGroupsFilter(ResponseFilter responseFilter) {
       return responseFilter == null ? null : new JGroupsResponseFilterAdapter(responseFilter);
    }

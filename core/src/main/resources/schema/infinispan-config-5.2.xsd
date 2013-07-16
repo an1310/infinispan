@@ -782,6 +782,13 @@
                     </xs:documentation>
                   </xs:annotation>
                 </xs:attribute>
+                <xs:attribute name="useQuorum" type="xs:boolean">
+                  <xs:annotation>
+                    <xs:documentation>
+                      An optional parameter that will return any synchronous call after a quorum of successful responses.
+                    </xs:documentation>
+                  </xs:annotation>
+                </xs:attribute>                
               </xs:complexType>
             </xs:element>
             <xs:element name="stateTransfer" minOccurs="0">

@@ -30,6 +30,7 @@ import org.infinispan.configuration.Builder;
 public class SyncConfigurationBuilder extends AbstractClusteringConfigurationChildBuilder implements Builder<SyncConfiguration> {
 
    private long replTimeout = TimeUnit.SECONDS.toMillis(15);
+   private boolean useQuorum = false;
 
    protected SyncConfigurationBuilder(ClusteringConfigurationBuilder builder) {
       super(builder);
@@ -51,6 +52,24 @@ public class SyncConfigurationBuilder extends AbstractClusteringConfigurationChi
    public SyncConfigurationBuilder replTimeout(long l, TimeUnit unit) {
       return replTimeout(unit.toMillis(l));
    }
+   
+   /**
+    * This is a configuration option to only wait for the first response before returning from a sync call.
+    * Note that if the call originates on the primary owner, the backup call is asynchronous.
+    */
+   public boolean useQuorum() {
+      return this.useQuorum;
+   }
+   
+   /**
+    * This is a configuration option to only wait for the first response before returning from a sync call.
+    * Note that if the call originates on the primary owner, the backup call is asynchronous.
+    */
+   public SyncConfigurationBuilder useQuorum( boolean useQuorum ) {
+      this.useQuorum = useQuorum;
+      return this;
+   }
+
 
    @Override
    public void validate() {
@@ -59,12 +78,13 @@ public class SyncConfigurationBuilder extends AbstractClusteringConfigurationChi
 
    @Override
    public SyncConfiguration create() {
-      return new SyncConfiguration(replTimeout);
+      return new SyncConfiguration(replTimeout, useQuorum);
    }
 
    @Override
    public SyncConfigurationBuilder read(SyncConfiguration template) {
       this.replTimeout = template.replTimeout();
+      this.useQuorum = template.useQuorum();
       return this;
    }
 
@@ -72,7 +92,7 @@ public class SyncConfigurationBuilder extends AbstractClusteringConfigurationChi
    public String toString() {
       return "SyncConfigurationBuilder{" +
             "replTimeout=" + replTimeout +
+            "useQuorum=" + useQuorum +
             '}';
    }
-
 }

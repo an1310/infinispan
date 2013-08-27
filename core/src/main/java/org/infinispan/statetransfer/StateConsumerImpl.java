@@ -56,6 +56,7 @@ import org.infinispan.transaction.LockingMode;
 import org.infinispan.transaction.RemoteTransaction;
 import org.infinispan.transaction.TransactionTable;
 import org.infinispan.transaction.xa.CacheTransaction;
+import org.infinispan.transaction.xa.GlobalTransaction;
 import org.infinispan.util.InfinispanCollections;
 import org.infinispan.util.ReadOnlyDataContainerBackedKeySet;
 import org.infinispan.util.concurrent.ConcurrentHashSet;
@@ -81,9 +82,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.infinispan.context.Flag.*;
 import static org.infinispan.factories.KnownComponentNames.ASYNC_TRANSPORT_EXECUTOR;
@@ -533,11 +531,15 @@ public class StateConsumerImpl implements StateConsumer {
       log.debugf("Applying %d transactions for cache %s transferred from node %s", transactions.size(), cacheName, sender);
       if (isTransactional) {
          for (TransactionInfo transactionInfo : transactions) {
-            CacheTransaction tx = transactionTable.getLocalTransaction(transactionInfo.getGlobalTransaction());
+            GlobalTransaction gtx = transactionInfo.getGlobalTransaction();
+            // Mark the global transaction as remote. Only used for logging, hashCode/equals ignore it.
+            gtx.setRemote(true);
+
+            CacheTransaction tx = transactionTable.getLocalTransaction(gtx);
             if (tx == null) {
-               tx = transactionTable.getRemoteTransaction(transactionInfo.getGlobalTransaction());
+               tx = transactionTable.getRemoteTransaction(gtx);
                if (tx == null) {
-                  tx = transactionTable.getOrCreateRemoteTransaction(transactionInfo.getGlobalTransaction(), transactionInfo.getModifications());
+                  tx = transactionTable.getOrCreateRemoteTransaction(gtx, transactionInfo.getModifications());
                   ((RemoteTransaction) tx).setMissingLookedUpEntries(true);
                }
             }

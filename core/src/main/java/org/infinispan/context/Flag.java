@@ -193,6 +193,12 @@ public enum Flag {
     * If cross-site replication is enabled, this would skip the replication to any remote site.
     */
    SKIP_XSITE_BACKUP,
+   
+   /**
+    * For distributed reads, if a key doesn't exist, we wait for all owners to return.  This flag
+    * skips that and returns after the first value.
+    */
+   GET_RETURN_ON_NULL,
 
    /**
     * Using a synchronous cache (whether replicated or distributed) provides

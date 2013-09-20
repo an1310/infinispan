@@ -535,6 +535,12 @@ public class StateConsumerImpl implements StateConsumer {
             // Mark the global transaction as remote. Only used for logging, hashCode/equals ignore it.
             gtx.setRemote(true);
 
+            // If this transaction has completed, we skip it.
+            if( transactionTable.isTransactionCompleted(gtx) ) {               
+               log.debugf("Skipping transaction %s for cache %s from sender %s because it is marked as completed", gtx, cacheName, sender );
+               continue;
+            }
+            
             CacheTransaction tx = transactionTable.getLocalTransaction(gtx);
             if (tx == null) {
                tx = transactionTable.getRemoteTransaction(gtx);

@@ -51,6 +51,12 @@ public class VersionedDistributionInterceptor extends TxDistributionInterceptor 
 
    @Override
    protected void prepareOnAffectedNodes(TxInvocationContext ctx, PrepareCommand command, Collection<Address> recipients, boolean ignored) {
+      
+      if(!(command instanceof VersionedPrepareCommand)) {
+         super.prepareOnAffectedNodes(ctx, command, recipients, ignored);
+         return;
+      }
+         
       setVersionsSeenOnPrepareCommand((VersionedPrepareCommand) command, ctx);
 
       // Perform the RPC

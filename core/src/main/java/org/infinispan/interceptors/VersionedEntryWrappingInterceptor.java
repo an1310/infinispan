@@ -58,6 +58,11 @@ public class VersionedEntryWrappingInterceptor extends EntryWrappingInterceptor 
 
    @Override
    public Object visitPrepareCommand(TxInvocationContext ctx, PrepareCommand command) throws Throwable {
+      
+      // Handle any non-versioned commands.
+      if( !(command instanceof VersionedPrepareCommand))
+         return super.visitPrepareCommand(ctx, command);
+           
       if (!ctx.isOriginLocal() || command.isReplayEntryWrapping()) {
          for (WriteCommand c : command.getModifications()) c.acceptVisitor(ctx, entryWrappingVisitor);
       }
@@ -76,6 +81,10 @@ public class VersionedEntryWrappingInterceptor extends EntryWrappingInterceptor 
 
    @Override
    public Object visitCommitCommand(TxInvocationContext ctx, CommitCommand command) throws Throwable {
+      
+      if( !(command instanceof VersionedCommitCommand))
+         return super.visitCommitCommand(ctx, command);
+      
       try {
          if (ctx.isOriginLocal())
             ((VersionedCommitCommand) command).setUpdatedVersions(ctx.getCacheTransaction().getUpdatedEntryVersions());
@@ -91,7 +100,11 @@ public class VersionedEntryWrappingInterceptor extends EntryWrappingInterceptor 
    @Override
    protected void commitContextEntry(CacheEntry entry, InvocationContext ctx, boolean skipOwnershipCheck) {
       if (ctx.isInTxScope() && !isFromStateTransfer(ctx)) {
-         EntryVersion version = ((TxInvocationContext) ctx).getCacheTransaction().getUpdatedEntryVersions().get(entry.getKey());
+         EntryVersion version = null;
+         EntryVersionsMap entries = ((TxInvocationContext) ctx).getCacheTransaction().getUpdatedEntryVersions();
+         if( entries != null ) {
+            version = entries.get(entry.getKey());
+         }         
          cdl.commitEntry(entry, version, skipOwnershipCheck, ctx);
       } else {
          // This could be a state transfer call!

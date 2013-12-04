@@ -121,4 +121,6 @@ public interface CacheTransaction {
    boolean isMarkedForRollback();
 
    void markForRollback(boolean markForRollback);
+   
+   long getCreationTime();
 }

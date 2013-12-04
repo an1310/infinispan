@@ -174,10 +174,10 @@ public abstract class AbstractTxLockingInterceptor extends AbstractLockingInterc
          final long expectedEndTime = nowMillis() + cacheConfiguration.locking().lockAcquisitionTimeout();
 
          // Check local transactions first
-         waitForTransactionsToComplete(txContext, txTable.getLocalTransactions(), key, transactionTopologyId, expectedEndTime);
+         waitForTransactionsToComplete(txContext, txTable.getLocalTransactions(), key, transactionTopologyId, expectedEndTime, true);
 
          // ... then remote ones
-         waitForTransactionsToComplete(txContext, txTable.getRemoteTransactions(), key, transactionTopologyId, expectedEndTime);
+         waitForTransactionsToComplete(txContext, txTable.getRemoteTransactions(), key, transactionTopologyId, expectedEndTime, false);
 
          // Then try to acquire a lock
          final long remaining = expectedEndTime - nowMillis();
@@ -194,7 +194,7 @@ public abstract class AbstractTxLockingInterceptor extends AbstractLockingInterc
    }
 
    private void waitForTransactionsToComplete(TxInvocationContext txContext, Collection<? extends CacheTransaction> transactions,
-                                              Object key, int transactionTopologyId, long expectedEndTime) throws InterruptedException {
+                                              Object key, int transactionTopologyId, long expectedEndTime, boolean isLocal) throws InterruptedException {
       GlobalTransaction thisTransaction = txContext.getGlobalTransaction();
       for (CacheTransaction tx : transactions) {
          if (tx.getTopologyId() < transactionTopologyId) {
@@ -204,8 +204,17 @@ public abstract class AbstractTxLockingInterceptor extends AbstractLockingInterc
 
             boolean txCompleted = false;
 
+            // Check for stale transactions.
+            long txTimeout = cacheConfiguration.transaction().completedTxTimeout();
+            long nowMillis = nowMillis();
+            if( nowMillis - tx.getCreationTime() >= txTimeout ) {
+               getLog().tracef("Adding stale transaction %s", tx);
+               txTable.addOrphanedTransaction(tx.getGlobalTransaction(), isLocal);
+               continue;
+            }
+            
             long remaining;
-            while ((remaining = expectedEndTime - nowMillis()) > 0) {
+            while ((remaining = expectedEndTime - nowMillis) > 0) {
                if (tx.waitForLockRelease(key, remaining)) {
                   txCompleted = true;
                   break;

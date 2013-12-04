@@ -84,6 +84,11 @@ public abstract class AbstractCacheTransaction implements CacheTransaction {
    private volatile boolean isMarkedForRollback;
 
    /**
+    * Mark the time this tx object was created
+    */
+   private final long txCreationTime;
+   
+   /**
     * Used internally by the {@link #waitForLockRelease} method in order to notify other transactions that wait on this
     * one to complete.
     */
@@ -100,6 +105,7 @@ public abstract class AbstractCacheTransaction implements CacheTransaction {
    public AbstractCacheTransaction(GlobalTransaction tx, int topologyId) {
       this.tx = tx;
       this.topologyId = topologyId;
+      this.txCreationTime = System.nanoTime() / 1000000;
    }
 
    @Override
@@ -307,5 +313,10 @@ public abstract class AbstractCacheTransaction implements CacheTransaction {
    @Override
    public boolean keyRead(Object key) {
       return false;
+   }
+   
+   @Override
+   public long getCreationTime() {
+      return txCreationTime;
    }
 }

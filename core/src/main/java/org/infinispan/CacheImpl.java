@@ -234,8 +234,10 @@ public class CacheImpl<K, V> extends CacheSupport<K, V> implements AdvancedCache
 
    private boolean removeInternal(Object key, Object value, EnumSet<Flag> explicitFlags, InvocationContext ctx) {
       assertKeyValueNotNull(key, value);
-      RemoveCommand command = commandsFactory.buildRemoveCommand(key, value, explicitFlags);
-      return (Boolean) executeCommandAndCommitIfNeeded(ctx, command);
+      RemoveCommand command = commandsFactory.buildRemoveCommand(key, value, explicitFlags);      
+      Object result = executeCommandAndCommitIfNeeded(ctx, command);
+      boolean returnVal = result != null? (Boolean)result:false;
+      return returnVal; 
    }
 
    @Override

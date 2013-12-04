@@ -100,7 +100,8 @@ public class TransactionTable {
    protected boolean clustered = false;
    private Lock minTopologyRecalculationLock;
    private final ConcurrentMap<GlobalTransaction, Long> completedTransactions = ConcurrentMapFactory.makeConcurrentMap();
-
+   private final ConcurrentMap<GlobalTransaction, Boolean> orphanedTransactions = ConcurrentMapFactory.makeConcurrentMap();
+   
    private ScheduledExecutorService executorService;
 
    /**
@@ -154,7 +155,7 @@ public class TransactionTable {
          }
       };
 
-      executorService = Executors.newSingleThreadScheduledExecutor(tf);
+      executorService = Executors.newScheduledThreadPool(2, tf);
 
       long interval = configuration.transaction().reaperWakeUpInterval();
       executorService.scheduleAtFixedRate(new Runnable() {
@@ -164,6 +165,12 @@ public class TransactionTable {
          }
       }, interval, interval, TimeUnit.MILLISECONDS);
 
+      executorService.scheduleAtFixedRate(new Runnable() {
+         @Override
+         public void run() {
+            cleanupOrphanedTransactions();
+         }
+      }, interval, interval, TimeUnit.MILLISECONDS);      
    }
 
    @Stop
@@ -275,6 +282,8 @@ public class TransactionTable {
          try {
             rc.perform(null);
             log.tracef("Rollback of transaction %s complete.", gtx);
+         } catch(IllegalStateException e1) {
+            // Do nothing.  This is a consequence of changing cache modes.
          } catch (Throwable e) {
             log.unableToRollbackGlobalTx(gtx, e);
          }
@@ -540,6 +549,10 @@ public class TransactionTable {
       return completedTransactions.containsKey(gtx);
    }
 
+   public void addOrphanedTransaction( GlobalTransaction gtx, boolean isLocal ) {
+      orphanedTransactions.putIfAbsent(gtx, isLocal);
+   }
+   
    public void cleanupCompletedTransactions() {
       if (!completedTransactions.isEmpty()) {
          try {
@@ -568,4 +581,52 @@ public class TransactionTable {
          }
       }
    }   
+   
+   public void cleanupOrphanedTransactions() {
+      if (!orphanedTransactions.isEmpty()) {
+         try {
+                     
+            log.tracef("About to cleanup orphaned transaction. Initial size is %d", orphanedTransactions.size());
+            // This iterator is weakly consistent and will never throw a ConcurrentModificationException
+            Iterator<Map.Entry<GlobalTransaction, Boolean>> iterator = orphanedTransactions.entrySet().iterator();
+            
+            long beginning = System.nanoTime();
+            int removedEntries = 0;
+            while (iterator.hasNext()) {
+               Map.Entry<GlobalTransaction, Boolean> e = iterator.next();               
+               GlobalTransaction gtx = e.getKey();
+               boolean isLocal = e.getValue();               
+               if( isLocal ) {                  
+                  removeLocalTransaction( localTransactions.get( gtx ) );
+                  removedEntries++;
+               }
+               else {
+                  
+                  log.tracef("Killing orphaned remote transaction originating on leaver %s", gtx);
+                  RollbackCommand rc = new RollbackCommand(cacheName, gtx);
+                  rc.init(invoker, icc, TransactionTable.this);
+                  try {
+                     rc.perform(null);
+                     log.tracef("Rollback of orphaned transaction %s complete.", gtx);
+                  } catch(IllegalStateException e1) {
+                     // Do nothing.  This is a consequence of changing cache modes.
+                  } catch (Throwable t) {
+                     log.unableToRollbackGlobalTx(gtx, t);
+                  }
+                  
+                  removeRemoteTransaction( gtx );
+                  removedEntries++;
+               }                             
+               
+               iterator.remove();                              
+            }
+            
+            long duration = System.nanoTime() - beginning;
+            log.tracef("Finished cleaning up orphaned transactions. %d transactions were removed, total duration was %d millis.", 
+                  removedEntries, TimeUnit.NANOSECONDS.toMillis(duration));
+         } catch (Exception e) {
+            log.errorf(e, "Failed to cleanup orphaned transactions: %s", e.getMessage());
+         }            
+      }
+   }
 }

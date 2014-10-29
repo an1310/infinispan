@@ -5,6 +5,7 @@ import org.infinispan.commons.marshall.InstanceReusingAdvancedExternalizer;
 import org.infinispan.marshall.core.Ids;
 import org.infinispan.remoting.transport.TopologyAwareAddress;
 import org.jgroups.util.ExtendedUUID;
+import org.jgroups.util.UUID;
 import org.jgroups.util.Util;
 
 import java.io.IOException;
@@ -69,12 +70,20 @@ public class JGroupsTopologyAwareAddress extends JGroupsAddress implements Topol
       return getMachineId() == null ? addr.getMachineId() == null : getMachineId().equals(addr.getMachineId());
    }
 
+   @Override
+   public String toString() {
+      String addr = UUID.get(topologyAddress);
+      if(addr == null) {
+         addr = topologyAddress.toStringLong();
+      }
+      return addr + (getSiteId() == null ? "" : "(" + getSiteId() + ")");
+   }  
+
    public static final class Externalizer extends InstanceReusingAdvancedExternalizer<JGroupsTopologyAwareAddress> {
       
       public Externalizer() {
          super(false);
-      }
-      
+      } 
       @Override
       public void doWriteObject(ObjectOutput output, JGroupsTopologyAwareAddress address) throws IOException {
          try {

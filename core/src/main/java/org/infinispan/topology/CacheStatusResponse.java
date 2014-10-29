@@ -54,6 +54,7 @@ public class CacheStatusResponse implements Serializable {
             "cacheJoinInfo=" + cacheJoinInfo +
             ", cacheTopology=" + cacheTopology +
             ", stableTopology=" + stableTopology +
+            ", availabilityMode=" + availabilityMode +
             '}';
    }
 

@@ -4,7 +4,7 @@
    <parent>
       <groupId>org.infinispan</groupId>
       <artifactId>infinispan-parent</artifactId>
-      <version>7.0.4-SNAPSHOT</version>
+      <version>7.0.x-BNI</version>
       <relativePath>../parent/pom.xml</relativePath>
    </parent>
 
@@ -112,7 +112,6 @@
       </plugins>
       <pluginManagement>
          <plugins>
-            
             <plugin>
                <groupId>org.eclipse.m2e</groupId>
                <artifactId>lifecycle-mapping</artifactId>

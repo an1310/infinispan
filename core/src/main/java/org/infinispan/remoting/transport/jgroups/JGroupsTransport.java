@@ -41,6 +41,7 @@ import org.jgroups.View;
 import org.jgroups.blocks.RequestOptions;
 import org.jgroups.blocks.RspFilter;
 import org.jgroups.blocks.mux.Muxer;
+import org.jgroups.conf.ClassConfigurator;
 import org.jgroups.jmx.JmxConfigurator;
 import org.jgroups.protocols.relay.SiteMaster;
 import org.jgroups.protocols.tom.TOA;
@@ -98,8 +99,15 @@ public class JGroupsTransport extends AbstractTransport implements MembershipLis
    public static final String CHANNEL_LOOKUP = "channelLookup";
    protected static final String DEFAULT_JGROUPS_CONFIGURATION_FILE = "default-configs/default-jgroups-udp.xml";
 
+   private static final short TOPOLOGY_AWARE_UUID_MAGIC_NUMBER = 1024;
+
    static final Log log = LogFactory.getLog(JGroupsTransport.class);
    static final boolean trace = log.isTraceEnabled();
+
+   static {
+      // BNI-specific: Add our UUID to the magic map.  Christ.
+      ClassConfigurator.add(TOPOLOGY_AWARE_UUID_MAGIC_NUMBER, TopologyAwareUUID.class);
+   }
 
    protected boolean connectChannel = true, disconnectChannel = true, closeChannel = true;
    private CommandAwareRpcDispatcher dispatcher;
@@ -330,12 +338,12 @@ public class JGroupsTransport extends AbstractTransport implements MembershipLis
       if (transportCfg.hasTopologyInfo()) {
          // We can do this only if the channel hasn't been started already
          if (connectChannel) {
-            ((JChannel) channel).setAddressGenerator(new AddressGenerator() {
+            ((JChannel) channel).addAddressGenerator(new AddressGenerator() {
                @Override
                public org.jgroups.Address generateAddress() {
-                  return TopologyUUID.randomUUID(channel.getName(),
-                        transportCfg.siteId(), transportCfg.rackId(),
-                        transportCfg.machineId());
+                  return TopologyAwareUUID.randomUUID(channel.getName(),
+                          transportCfg.siteId(), transportCfg.rackId(),
+                          transportCfg.machineId());
                }
             });
          } else {

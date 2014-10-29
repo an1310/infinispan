@@ -50,6 +50,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager {
    private ExecutorService asyncTransportExecutor;
    private GlobalComponentRegistry gcr;
    private TimeService timeService;
+   private ClusterTopologyManager clusterTopologyManager;
 
    private final ConcurrentMap<String, LocalCacheStatus> runningCaches = CollectionFactory.makeConcurrentMap();
    private volatile boolean running;
@@ -57,11 +58,12 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager {
    @Inject
    public void inject(Transport transport,
                       @ComponentName(ASYNC_TRANSPORT_EXECUTOR) ExecutorService asyncTransportExecutor,
-                      GlobalComponentRegistry gcr, TimeService timeService) {
+                      GlobalComponentRegistry gcr, TimeService timeService, ClusterTopologyManager clusterTopologyManager) {
       this.transport = transport;
       this.asyncTransportExecutor = asyncTransportExecutor;
       this.gcr = gcr;
       this.timeService = timeService;
+      this.clusterTopologyManager = clusterTopologyManager;
    }
 
    // Arbitrary value, only need to start after JGroupsTransport
@@ -153,6 +155,7 @@ public class LocalTopologyManagerImpl implements LocalTopologyManager {
       Map<String, CacheStatusResponse> caches = new HashMap<String, CacheStatusResponse>();
       for (Map.Entry<String, LocalCacheStatus> e : runningCaches.entrySet()) {
          String cacheName = e.getKey();
+
          LocalCacheStatus cacheStatus = runningCaches.get(cacheName);
          AvailabilityMode availabilityMode = cacheStatus.getPartitionHandlingManager() != null ?
                cacheStatus.getPartitionHandlingManager().getAvailabilityMode() : null;
